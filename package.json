@@ -1,0 +1,100 @@
+{
+  "name": "vscode-animation-frame-harness",
+  "displayName": "VSCode Animation Frame Harness",
+  "description": "Profiling harness to stress-test VSCode's animation frame queue with heavy extension-like workloads",
+  "version": "0.1.0",
+  "publisher": "erkinalp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/erkinalp/vscode-animation-frame-harness"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Testing",
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:rafHarness.start",
+    "onCommand:rafHarness.stop",
+    "onCommand:rafHarness.runScenario"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "rafHarness.start",
+        "title": "RAF Harness: Start Scenario"
+      },
+      {
+        "command": "rafHarness.stop",
+        "title": "RAF Harness: Stop"
+      },
+      {
+        "command": "rafHarness.runScenario",
+        "title": "RAF Harness: Run Custom Scenario"
+      }
+    ],
+    "configuration": {
+      "title": "Animation Frame Harness",
+      "properties": {
+        "rafHarness.queueSize": {
+          "type": "number",
+          "default": 100,
+          "enum": [10, 50, 100, 200],
+          "description": "Number of animation frame callbacks to schedule"
+        },
+        "rafHarness.scenario": {
+          "type": "string",
+          "default": "decorations-many-types",
+          "enum": [
+            "decorations-many-types",
+            "decorations-batch-updates",
+            "edits-batch"
+          ],
+          "description": "Scenario to run"
+        },
+        "rafHarness.priorityDistribution": {
+          "type": "string",
+          "default": "varied",
+          "enum": ["uniform", "varied", "all-equal"],
+          "description": "Priority distribution for callbacks"
+        },
+        "rafHarness.seed": {
+          "type": "number",
+          "default": 42,
+          "description": "Random seed for deterministic scenarios"
+        },
+        "rafHarness.durationMs": {
+          "type": "number",
+          "default": 10000,
+          "description": "Duration to run scenario in milliseconds"
+        },
+        "rafHarness.autoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically start scenario on activation"
+        },
+        "rafHarness.frameBudgetMs": {
+          "type": "number",
+          "default": 16,
+          "description": "Frame budget in milliseconds (16ms = 60fps)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "install-extension": "code --install-extension ./vscode-animation-frame-harness-*.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^2.19.0",
+    "typescript": "^5.0.0"
+  }
+}
