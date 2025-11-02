@@ -56,6 +56,8 @@ Use this mode to understand how the animation frame queue performs with your act
 - Comparing baseline performance vs. stressed performance
 - Identifying whether existing extensions already stress the animation frame queue
 
+**Key Difference**: In this mode, scenarios run as fast as possible without artificial delays, focusing on measurement rather than generating timed workloads. This allows you to observe the actual performance characteristics of your installation.
+
 #### Workflow for Existing Installations
 
 **Step 1: Measure Baseline Performance**
@@ -73,12 +75,15 @@ Use this mode to understand how the animation frame queue performs with your act
 3. Record another profile during the scenario
 4. Save the profile as `scenario-profile.cpuprofile`
 
+Note: Scenarios in this branch run continuously without artificial delays, allowing you to measure maximum throughput and observe performance characteristics.
+
 **Step 3: Compare Results**
 
 Compare the two profiles to understand:
 - Baseline animation frame queue activity from your extensions
 - Incremental impact of the harness workload
 - Whether the animation frame queue is already a bottleneck
+- Maximum update rates achievable with your configuration
 
 **Recommended Settings for Existing Installations**
 
@@ -93,7 +98,7 @@ Compare the two profiles to understand:
 }
 ```
 
-Enable `detailedLogging` to get more information about update rates and timing, which helps distinguish harness activity from existing extension activity.
+Enable `detailedLogging` to get detailed information about update rates, timing, and throughput. This helps you understand the performance characteristics of your installation and compare baseline vs. stressed scenarios.
 
 ### Quick Start (Either Mode)
 

@@ -64,38 +64,39 @@ export class DecorationsManyTypesScenario implements Scenario {
 
         const startTime = Date.now();
         let updateCount = 0;
-        const updateDecorations = () => {
-            if (this.stopped || Date.now() - startTime >= config.durationMs) {
-                this.stop();
-                const elapsed = Date.now() - startTime;
-                outputChannel.appendLine(`[${new Date().toISOString()}] Scenario completed`);
-                if (config.detailedLogging) {
-                    outputChannel.appendLine(`  Total updates: ${updateCount}`);
-                    outputChannel.appendLine(`  Actual duration: ${elapsed}ms`);
-                    outputChannel.appendLine(`  Average update rate: ${(updateCount / (elapsed / 1000)).toFixed(2)} updates/sec`);
+        
+        const runContinuously = async () => {
+            while (!this.stopped && Date.now() - startTime < config.durationMs) {
+                if (!this.editor) {
+                    break;
                 }
-                return;
+
+                const updateStart = config.detailedLogging ? performance.now() : 0;
+                for (let i = 0; i < this.decorationTypes.length; i++) {
+                    const ranges = this.generateRanges(rng, this.editor.document, 3);
+                    this.editor.setDecorations(this.decorationTypes[i], ranges);
+                }
+                updateCount++;
+
+                if (config.detailedLogging && updateCount % 100 === 0) {
+                    const updateDuration = performance.now() - updateStart;
+                    outputChannel.appendLine(`  Update ${updateCount}: ${updateDuration.toFixed(2)}ms (${this.decorationTypes.length} decorations)`);
+                }
+
+                await new Promise(resolve => setImmediate(resolve));
             }
 
-            if (!this.editor) {
-                return;
-            }
-
-            const updateStart = config.detailedLogging ? performance.now() : 0;
-            for (let i = 0; i < this.decorationTypes.length; i++) {
-                const ranges = this.generateRanges(rng, this.editor.document, 3);
-                this.editor.setDecorations(this.decorationTypes[i], ranges);
-            }
-            updateCount++;
-
-            if (config.detailedLogging && updateCount % 10 === 0) {
-                const updateDuration = performance.now() - updateStart;
-                outputChannel.appendLine(`  Update ${updateCount}: ${updateDuration.toFixed(2)}ms (${this.decorationTypes.length} decorations)`);
+            this.stop();
+            const elapsed = Date.now() - startTime;
+            outputChannel.appendLine(`[${new Date().toISOString()}] Scenario completed`);
+            if (config.detailedLogging) {
+                outputChannel.appendLine(`  Total updates: ${updateCount}`);
+                outputChannel.appendLine(`  Actual duration: ${elapsed}ms`);
+                outputChannel.appendLine(`  Average update rate: ${(updateCount / (elapsed / 1000)).toFixed(2)} updates/sec`);
             }
         };
 
-        this.intervalId = setInterval(updateDecorations, config.frameBudgetMs);
-        updateDecorations(); // Initial update
+        runContinuously();
     }
 
     stop(): void {
@@ -183,29 +184,38 @@ export class DecorationsBatchUpdatesScenario implements Scenario {
         });
 
         const startTime = Date.now();
-        const batchUpdate = () => {
-            if (this.stopped || Date.now() - startTime >= config.durationMs) {
-                this.stop();
-                outputChannel.appendLine(`[${new Date().toISOString()}] Scenario completed`);
-                return;
+        let batchCount = 0;
+        
+        const runContinuously = async () => {
+            while (!this.stopped && Date.now() - startTime < config.durationMs) {
+                if (!this.editor || !this.decorationType) {
+                    break;
+                }
+
+                for (let i = 0; i < config.queueSize; i++) {
+                    const ranges = this.generateRanges(rng, this.editor.document, 1);
+                    queueMicrotask(() => {
+                        if (this.editor && this.decorationType) {
+                            this.editor.setDecorations(this.decorationType, ranges);
+                        }
+                    });
+                }
+                batchCount++;
+
+                await new Promise(resolve => setImmediate(resolve));
             }
 
-            if (!this.editor || !this.decorationType) {
-                return;
-            }
-
-            for (let i = 0; i < config.queueSize; i++) {
-                const ranges = this.generateRanges(rng, this.editor.document, 1);
-                queueMicrotask(() => {
-                    if (this.editor && this.decorationType) {
-                        this.editor.setDecorations(this.decorationType, ranges);
-                    }
-                });
+            this.stop();
+            const elapsed = Date.now() - startTime;
+            outputChannel.appendLine(`[${new Date().toISOString()}] Scenario completed`);
+            if (config.detailedLogging) {
+                outputChannel.appendLine(`  Total batches: ${batchCount}`);
+                outputChannel.appendLine(`  Actual duration: ${elapsed}ms`);
+                outputChannel.appendLine(`  Average batch rate: ${(batchCount / (elapsed / 1000)).toFixed(2)} batches/sec`);
             }
         };
 
-        this.intervalId = setInterval(batchUpdate, config.frameBudgetMs * 2);
-        batchUpdate(); // Initial batch
+        runContinuously();
     }
 
     stop(): void {
@@ -265,32 +275,41 @@ export class EditsBatchScenario implements Scenario {
         }
 
         const startTime = Date.now();
-        const batchEdit = async () => {
-            if (this.stopped || Date.now() - startTime >= config.durationMs) {
-                this.stop();
-                outputChannel.appendLine(`[${new Date().toISOString()}] Scenario completed`);
-                return;
-            }
-
-            if (!this.editor) {
-                return;
-            }
-
-            await this.editor.edit(editBuilder => {
+        let editCount = 0;
+        
+        const runContinuously = async () => {
+            while (!this.stopped && Date.now() - startTime < config.durationMs) {
                 if (!this.editor) {
-                    return;
+                    break;
                 }
-                
-                for (let i = 0; i < Math.min(config.queueSize, 50); i++) {
-                    const line = rng.nextInt(0, this.editor.document.lineCount);
-                    const position = new vscode.Position(line, 0);
-                    editBuilder.insert(position, rng.choice(['x', 'y', 'z']));
-                }
-            });
+
+                await this.editor.edit(editBuilder => {
+                    if (!this.editor) {
+                        return;
+                    }
+                    
+                    for (let i = 0; i < Math.min(config.queueSize, 50); i++) {
+                        const line = rng.nextInt(0, this.editor.document.lineCount);
+                        const position = new vscode.Position(line, 0);
+                        editBuilder.insert(position, rng.choice(['x', 'y', 'z']));
+                    }
+                });
+                editCount++;
+
+                await new Promise(resolve => setImmediate(resolve));
+            }
+
+            this.stop();
+            const elapsed = Date.now() - startTime;
+            outputChannel.appendLine(`[${new Date().toISOString()}] Scenario completed`);
+            if (config.detailedLogging) {
+                outputChannel.appendLine(`  Total edit batches: ${editCount}`);
+                outputChannel.appendLine(`  Actual duration: ${elapsed}ms`);
+                outputChannel.appendLine(`  Average edit rate: ${(editCount / (elapsed / 1000)).toFixed(2)} edits/sec`);
+            }
         };
 
-        this.intervalId = setInterval(batchEdit, config.frameBudgetMs * 3);
-        await batchEdit(); // Initial batch
+        runContinuously();
     }
 
     stop(): void {
