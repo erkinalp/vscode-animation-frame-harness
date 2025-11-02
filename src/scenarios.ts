@@ -7,6 +7,7 @@ export interface ScenarioConfig {
     seed: number;
     durationMs: number;
     frameBudgetMs: number;
+    detailedLogging?: boolean;
 }
 
 export interface Scenario {
@@ -35,6 +36,10 @@ export class DecorationsManyTypesScenario implements Scenario {
         outputChannel.appendLine(`  Priority distribution: ${config.priorityDistribution}`);
         outputChannel.appendLine(`  Seed: ${config.seed}`);
         outputChannel.appendLine(`  Duration: ${config.durationMs}ms`);
+        if (config.detailedLogging) {
+            outputChannel.appendLine(`  Detailed logging: enabled`);
+            outputChannel.appendLine(`  Frame budget: ${config.frameBudgetMs}ms`);
+        }
 
         this.editor = vscode.window.activeTextEditor;
         if (!this.editor) {
@@ -58,10 +63,17 @@ export class DecorationsManyTypesScenario implements Scenario {
         outputChannel.appendLine(`  Created ${this.decorationTypes.length} decoration types`);
 
         const startTime = Date.now();
+        let updateCount = 0;
         const updateDecorations = () => {
             if (this.stopped || Date.now() - startTime >= config.durationMs) {
                 this.stop();
+                const elapsed = Date.now() - startTime;
                 outputChannel.appendLine(`[${new Date().toISOString()}] Scenario completed`);
+                if (config.detailedLogging) {
+                    outputChannel.appendLine(`  Total updates: ${updateCount}`);
+                    outputChannel.appendLine(`  Actual duration: ${elapsed}ms`);
+                    outputChannel.appendLine(`  Average update rate: ${(updateCount / (elapsed / 1000)).toFixed(2)} updates/sec`);
+                }
                 return;
             }
 
@@ -69,9 +81,16 @@ export class DecorationsManyTypesScenario implements Scenario {
                 return;
             }
 
+            const updateStart = config.detailedLogging ? performance.now() : 0;
             for (let i = 0; i < this.decorationTypes.length; i++) {
                 const ranges = this.generateRanges(rng, this.editor.document, 3);
                 this.editor.setDecorations(this.decorationTypes[i], ranges);
+            }
+            updateCount++;
+
+            if (config.detailedLogging && updateCount % 10 === 0) {
+                const updateDuration = performance.now() - updateStart;
+                outputChannel.appendLine(`  Update ${updateCount}: ${updateDuration.toFixed(2)}ms (${this.decorationTypes.length} decorations)`);
             }
         };
 

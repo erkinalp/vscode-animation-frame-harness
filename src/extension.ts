@@ -37,6 +37,12 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    context.subscriptions.push(
+        vscode.commands.registerCommand('rafHarness.measureBaseline', async () => {
+            await measureBaseline();
+        })
+    );
+
     const config = vscode.workspace.getConfiguration('rafHarness');
     if (config.get<boolean>('autoStart', false)) {
         outputChannel.appendLine('Auto-start enabled, starting scenario...');
@@ -74,7 +80,8 @@ async function startScenario() {
         priorityDistribution: config.get<'uniform' | 'varied' | 'all-equal'>('priorityDistribution', 'varied'),
         seed: config.get<number>('seed', 42),
         durationMs: config.get<number>('durationMs', 10000),
-        frameBudgetMs: config.get<number>('frameBudgetMs', 16)
+        frameBudgetMs: config.get<number>('frameBudgetMs', 16),
+        detailedLogging: config.get<boolean>('detailedLogging', false)
     };
 
     currentScenario = scenario;
@@ -138,7 +145,8 @@ async function runCustomScenario(args?: {
         priorityDistribution: config.get<'uniform' | 'varied' | 'all-equal'>('priorityDistribution', 'varied'),
         seed: args?.seed || config.get<number>('seed', 42),
         durationMs: args?.durationMs || config.get<number>('durationMs', 10000),
-        frameBudgetMs: config.get<number>('frameBudgetMs', 16)
+        frameBudgetMs: config.get<number>('frameBudgetMs', 16),
+        detailedLogging: config.get<boolean>('detailedLogging', false)
     };
 
     currentScenario = scenario;
@@ -162,4 +170,59 @@ async function runCustomScenario(args?: {
         currentScenario = null;
         statusBarItem.hide();
     }
+}
+
+async function measureBaseline() {
+    const config = vscode.workspace.getConfiguration('rafHarness');
+    const durationMs = config.get<number>('baselineDurationMs', 5000);
+
+    outputChannel.show(true);
+    outputChannel.appendLine('');
+    outputChannel.appendLine('='.repeat(80));
+    outputChannel.appendLine('Measuring Baseline Performance');
+    outputChannel.appendLine('='.repeat(80));
+    outputChannel.appendLine(`Duration: ${durationMs}ms`);
+    outputChannel.appendLine('');
+    outputChannel.appendLine('This measurement captures the current performance characteristics');
+    outputChannel.appendLine('of your VS Code installation with all active extensions.');
+    outputChannel.appendLine('');
+    outputChannel.appendLine('Instructions:');
+    outputChannel.appendLine('1. Open Chrome DevTools (Help → Toggle Developer Tools)');
+    outputChannel.appendLine('2. Go to the Performance tab');
+    outputChannel.appendLine('3. Click the record button (●)');
+    outputChannel.appendLine('4. Wait for the measurement to complete');
+    outputChannel.appendLine('5. Stop recording and save the profile');
+    outputChannel.appendLine('');
+    outputChannel.appendLine('After baseline measurement, run a scenario with the same duration');
+    outputChannel.appendLine('to compare the incremental impact of the harness workload.');
+    outputChannel.appendLine('');
+
+    statusBarItem.text = `$(sync~spin) RAF Harness: Baseline`;
+    statusBarItem.tooltip = 'Measuring baseline performance';
+    statusBarItem.show();
+
+    const startTime = Date.now();
+    outputChannel.appendLine(`[${new Date().toISOString()}] Baseline measurement started`);
+
+    await new Promise<void>((resolve) => {
+        const checkInterval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            if (elapsed >= durationMs) {
+                clearInterval(checkInterval);
+                resolve();
+            }
+        }, 100);
+    });
+
+    outputChannel.appendLine(`[${new Date().toISOString()}] Baseline measurement completed`);
+    outputChannel.appendLine('');
+    outputChannel.appendLine('Next steps:');
+    outputChannel.appendLine('1. Save your baseline profile as "baseline-profile.cpuprofile"');
+    outputChannel.appendLine('2. Run a scenario: "RAF Harness: Start Scenario"');
+    outputChannel.appendLine('3. Record another profile and save as "scenario-profile.cpuprofile"');
+    outputChannel.appendLine('4. Compare the two profiles to see the incremental impact');
+    outputChannel.appendLine('');
+
+    statusBarItem.hide();
+    vscode.window.showInformationMessage('Baseline measurement completed. Check the RAF Harness output channel.');
 }

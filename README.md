@@ -10,6 +10,7 @@ This harness simulates heavy extension usage by creating workloads that trigger 
 - Stress-test the animation frame queue with 50-200 callbacks
 - Work with both development and release builds of VSCode
 - Provide concrete measurements for performance analysis
+- Profile both fresh installations and existing installations with extensions
 
 ## Installation
 
@@ -33,9 +34,68 @@ npm run package
 code --install-extension ./vscode-animation-frame-harness-*.vsix
 ```
 
-## Usage
+## Usage Modes
 
-### Quick Start
+This harness supports two profiling modes:
+
+1. **Fresh Installation Profiling**: Profile VSCode without existing extensions (isolated testing)
+2. **Existing Installation Profiling**: Profile your current VSCode with all your extensions (real-world testing)
+
+### Mode 1: Fresh Installation Profiling
+
+Use this mode for isolated, reproducible testing without interference from other extensions.
+
+See the [Automated Profiling](#automated-profiling) section for instructions on using a temporary profile.
+
+### Mode 2: Existing Installation Profiling (New!)
+
+Use this mode to understand how the animation frame queue performs with your actual extension workload. This is particularly useful for:
+
+- Understanding real-world performance with 50+ extensions
+- Measuring the incremental impact of the harness workload on top of existing extensions
+- Comparing baseline performance vs. stressed performance
+- Identifying whether existing extensions already stress the animation frame queue
+
+#### Workflow for Existing Installations
+
+**Step 1: Measure Baseline Performance**
+
+1. Install the harness in your regular VSCode (see [Installation](#installation))
+2. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+3. Run: `RAF Harness: Measure Baseline Performance`
+4. Follow the instructions in the output channel to record a baseline profile
+5. Save the profile as `baseline-profile.cpuprofile`
+
+**Step 2: Run a Scenario**
+
+1. Configure the harness (see [Configuration](#configuration))
+2. Run: `RAF Harness: Start Scenario`
+3. Record another profile during the scenario
+4. Save the profile as `scenario-profile.cpuprofile`
+
+**Step 3: Compare Results**
+
+Compare the two profiles to understand:
+- Baseline animation frame queue activity from your extensions
+- Incremental impact of the harness workload
+- Whether the animation frame queue is already a bottleneck
+
+**Recommended Settings for Existing Installations**
+
+```json
+{
+  "rafHarness.queueSize": 100,
+  "rafHarness.scenario": "decorations-many-types",
+  "rafHarness.seed": 42,
+  "rafHarness.durationMs": 10000,
+  "rafHarness.detailedLogging": true,
+  "rafHarness.baselineDurationMs": 5000
+}
+```
+
+Enable `detailedLogging` to get more information about update rates and timing, which helps distinguish harness activity from existing extension activity.
+
+### Quick Start (Either Mode)
 
 1. Open VSCode
 2. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
@@ -55,7 +115,9 @@ Configure the harness via VSCode settings (`Ctrl+,` / `Cmd+,`):
   "rafHarness.seed": 42,
   "rafHarness.durationMs": 10000,
   "rafHarness.frameBudgetMs": 16,
-  "rafHarness.autoStart": false
+  "rafHarness.autoStart": false,
+  "rafHarness.detailedLogging": false,
+  "rafHarness.baselineDurationMs": 5000
 }
 ```
 
@@ -68,6 +130,8 @@ Configure the harness via VSCode settings (`Ctrl+,` / `Cmd+,`):
 - `durationMs`: How long to run the scenario (milliseconds)
 - `frameBudgetMs`: Frame budget (16ms = 60fps)
 - `autoStart`: Automatically start on activation (useful for automated profiling)
+- `detailedLogging`: Enable detailed performance logging (useful for existing installations)
+- `baselineDurationMs`: Duration for baseline measurement (milliseconds)
 
 ### Available Scenarios
 
@@ -98,6 +162,7 @@ Performs many small text edits to trigger animation frame callbacks.
 - **RAF Harness: Start Scenario** - Start the configured scenario
 - **RAF Harness: Stop** - Stop the running scenario
 - **RAF Harness: Run Custom Scenario** - Run with custom parameters (for scripting)
+- **RAF Harness: Measure Baseline Performance** - Measure baseline performance of existing installation (for profiling with extensions)
 
 ## Profiling with Chrome DevTools
 

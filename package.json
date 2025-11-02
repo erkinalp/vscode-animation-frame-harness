@@ -18,7 +18,8 @@
   "activationEvents": [
     "onCommand:rafHarness.start",
     "onCommand:rafHarness.stop",
-    "onCommand:rafHarness.runScenario"
+    "onCommand:rafHarness.runScenario",
+    "onCommand:rafHarness.measureBaseline"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -34,6 +35,10 @@
       {
         "command": "rafHarness.runScenario",
         "title": "RAF Harness: Run Custom Scenario"
+      },
+      {
+        "command": "rafHarness.measureBaseline",
+        "title": "RAF Harness: Measure Baseline Performance"
       }
     ],
     "configuration": {
@@ -80,6 +85,16 @@
           "type": "number",
           "default": 16,
           "description": "Frame budget in milliseconds (16ms = 60fps)"
+        },
+        "rafHarness.detailedLogging": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable detailed performance logging (useful for existing installations)"
+        },
+        "rafHarness.baselineDurationMs": {
+          "type": "number",
+          "default": 5000,
+          "description": "Duration for baseline measurement in milliseconds"
         }
       }
     }
